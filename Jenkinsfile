@@ -1,96 +1,80 @@
-
 pipeline {
     agent any
-
-    options {
-        skipDefaultCheckout(true)
-        timestamps()
+    
+    tools {
+        // Ensure this matches the Node.js tool name configured in your Jenkins: Manage Jenkins -> Tools
+        nodejs 'NodeJS'
     }
-
+    
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
-                echo 'Source code checked out successfully.'
+                // Explicitly defining the repo URL prevents empty-string errors
+                git branch: 'main', url: 'https://github.com/hemant0045/task_manager.git'
             }
         }
-
+        
         stage('Check Node.js') {
             steps {
-                bat 'node --version'
-                bat 'npm --version'
-                bat 'git --version'
+                sh 'node -v'
+                sh 'npm -v'
             }
         }
-
+        
         stage('Install Dependencies') {
             steps {
-                script {
-                    if (fileExists('package-lock.json')) {
-                        bat 'npm ci'
-                    } else {
-                        bat 'npm install'
-                    }
-                }
+                sh 'npm install'
             }
         }
-
+        
         stage('Build Application') {
             steps {
-                bat 'npm run build --if-present'
+                // Runs build script if it exists in package.json
+                sh 'npm run build --if-present'
             }
         }
-
+        
         stage('Test Application') {
             steps {
-                script {
-                    def packageJson = readJSON file: 'package.json'
-                    if (packageJson.scripts?.test) {
-                        bat 'npm test'
-                    } else {
-                        echo 'No test script configured in package.json. Skipping tests.'
-                    }
-                }
+                // Runs test script if it exists in package.json
+                sh 'npm test --if-present'
             }
         }
-
+        
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    bat '''
-                        sonar-scanner ^
-                          -Dsonar.projectKey=task_manager ^
-                          -Dsonar.projectName=Task_Manager ^
-                          -Dsonar.sources=. ^
-                          -Dsonar.exclusions=node_modules/**,dist/**,build/**,.git/**
-                    '''
+                // Uncomment this block once SonarQube server is configured in Jenkins
+                /*
+                withSonarQubeEnv('Your-SonarQube-Server-Name') {
+                    sh 'sonar-scanner'
                 }
+                */
+                echo 'SonarQube Analysis stage skipped (Configure withSonarQubeEnv when ready)'
             }
         }
-
+        
         stage('Quality Gate') {
             steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    script {
-                        def result = waitForQualityGate()
-                        if (result.status != 'OK') {
-                            error "Quality Gate failed: ${result.status}"
-                        }
-                    }
+                // Uncomment once SonarQube webhook/quality gate is set up
+                /*
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
                 }
+                */
+                echo 'Quality Gate stage skipped'
             }
         }
     }
-
+    
     post {
         always {
             echo 'Pipeline execution finished.'
         }
-        success {
-            echo 'SUCCESS: Pipeline completed.'
-        }
         failure {
             echo 'FAILURE: Check Jenkins Console Output.'
+        }
+        success {
+            echo 'SUCCESS: Pipeline executed successfully!'
         }
     }
 }
