@@ -3,13 +3,6 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-                echo 'Source code checkout completed.'
-            }
-        }
-
         stage('Check Node.js') {
             steps {
                 bat 'node --version'
@@ -41,14 +34,11 @@ pipeline {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     script {
-                        def qualityGate =
-                            waitForQualityGate()
+                        def result = waitForQualityGate()
 
-                        if (qualityGate.status != 'OK') {
-                            error "Quality Gate failed: ${qualityGate.status}"
+                        if (result.status != 'OK') {
+                            error "Quality Gate failed: ${result.status}"
                         }
-
-                        echo 'Quality Gate passed.'
                     }
                 }
             }
